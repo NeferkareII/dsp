@@ -704,6 +704,9 @@ btf_sparse = function(y, evol_error = 'DHS', zero_error = 'DHS', D = 2,
 #' \item "obs_sigma_t2" (observation error variance)
 #' \item "dhs_phi" (DHS AR(1) coefficient)
 #' \item "dhs_mean" (DHS AR(1) unconditional mean)
+#' \item "sv_mu" (SV mean coefficient for observation error)
+#' \item "sv_phi" (SV AR(1) coefficient for observation error)
+#' \item "sv_sigma" (SV SD coefficient for observation error)
 #' }
 #' @param use_backfitting logical; if TRUE, use backfitting to sample the predictors j=1,...,p
 #' (faster, but usually less MCMC efficient)
@@ -744,7 +747,7 @@ btf_sparse = function(y, evol_error = 'DHS', zero_error = 'DHS', D = 2,
 #' @export
 btf_reg = function(y, X = NULL, evol_error = 'DHS', D = 1, useObsSV = FALSE,
                    nsave = 1000, nburn = 1000, nskip = 4,
-                   mcmc_params = list("mu", "yhat","beta","evol_sigma_t2", "obs_sigma_t2", "dhs_phi", "dhs_mean"),
+                   mcmc_params = list("mu", "yhat","beta","evol_sigma_t2", "obs_sigma_t2", "dhs_phi", "dhs_mean", "sv_mu", "sv_phi", "sv_sigma"),
                    use_backfitting = FALSE,
                    computeDIC = TRUE,
                    verbose = TRUE){
@@ -812,6 +815,9 @@ btf_reg = function(y, X = NULL, evol_error = 'DHS', D = 1, useObsSV = FALSE,
   if(!is.na(match('evol_sigma_t2', mcmc_params))) post_evol_sigma_t2 = array(NA, c(nsave, T, p))
   if(!is.na(match('dhs_phi', mcmc_params)) && evol_error == "DHS") post_dhs_phi = array(NA, c(nsave, p))
   if(!is.na(match('dhs_mean', mcmc_params)) && evol_error == "DHS") post_dhs_mean = array(NA, c(nsave, p))
+  if(!is.na(match('sv_mu', mcmc_params)) && useObsSV) post_sv_mu = rep(NA_real_, nsave)
+  if(!is.na(match('sv_phi', mcmc_params)) && useObsSV) post_sv_phi = rep(NA_real_, nsave)
+  if(!is.na(match('sv_sigma', mcmc_params)) && useObsSV) post_sv_sigma = rep(NA_real_, nsave)
   post_loglike = numeric(nsave)
 
   # Total number of MCMC simulations:
@@ -894,6 +900,9 @@ btf_reg = function(y, X = NULL, evol_error = 'DHS', D = 1, useObsSV = FALSE,
         }
         if(!is.na(match('dhs_phi', mcmc_params)) && evol_error == "DHS") post_dhs_phi[isave,] = evolParams$dhs_phi
         if(!is.na(match('dhs_mean', mcmc_params)) && evol_error == "DHS") post_dhs_mean[isave,] = evolParams$dhs_mean
+        if(!is.na(match('sv_phi', mcmc_params)) && useObsSV) post_sv_phi[isave] = svParams$svParams[2,1]
+        if(!is.na(match('sv_mu', mcmc_params)) && useObsSV) post_sv_mu[isave] = svParams$svParams[1,1]
+        if(!is.na(match('sv_sigma', mcmc_params)) && useObsSV) post_sv_sigma[isave] = svParams$svParams[3,1]
         post_loglike[isave] = sum(dnorm(y, mean = mu, sd = sigma_et, log = TRUE))
 
         # And reset the skip counter:
@@ -910,6 +919,10 @@ btf_reg = function(y, X = NULL, evol_error = 'DHS', D = 1, useObsSV = FALSE,
   if(!is.na(match('evol_sigma_t2', mcmc_params))) mcmc_output$evol_sigma_t2 = post_evol_sigma_t2
   if(!is.na(match('dhs_phi', mcmc_params)) && evol_error == "DHS") mcmc_output$dhs_phi = post_dhs_phi
   if(!is.na(match('dhs_mean', mcmc_params)) && evol_error == "DHS") mcmc_output$dhs_mean = post_dhs_mean
+  if(!is.na(match('sv_mu', mcmc_params)) && useObsSV) mcmc_output$sv_mu = post_sv_mu
+  if(!is.na(match('sv_phi', mcmc_params)) && useObsSV) mcmc_output$sv_phi = post_sv_phi
+  if(!is.na(match('sv_sigma', mcmc_params)) && useObsSV) mcmc_output$sv_sigma = post_sv_sigma
+
 
   # Also include the log-likelihood:
   mcmc_output$loglike = post_loglike
